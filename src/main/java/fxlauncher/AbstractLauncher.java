@@ -180,40 +180,6 @@ public abstract class AbstractLauncher<APP> {
 	protected void syncManifest() throws Exception {
 		Map<String, String> namedParams = getParameters().getNamed();
 
-		String appStr = null;
-
-		if (namedParams.containsKey("app")) {
-			// get --app-param
-			// appStr = ensureEndingSlash(namedParams.get("app"));
-			// no need to add slass to end
-			appStr = namedParams.get("app");
-			log.info(String.format("Loading manifest from 'app' parameter supplied: %s", appStr));
-		}
-
-		if (namedParams.containsKey("uri")) {
-			// get --uri-param
-			String uriStr = ensureEndingSlash(namedParams.get("uri"));
-			log.info(()->String.format("Syncing files from 'uri' parameter supplied:  %s", uriStr));
-
-			URI uri = URI.create(uriStr);
-
-			// load manifest from --app param if supplied, else default file at supplied uri
-			URI app = (appStr != null) ? URI.create(appStr) : URI.create(uriStr + "app.xml"); // We avoid using
-																								// uri.resolve() here so
-																								// as to not break UNC
-																								// paths. See issue #143
-			manifest = FXManifest.load(app);
-			// set supplied uri in manifest
-			manifest.uri = uri;
-			return;
-		}
-
-		if (appStr != null) {
-			// --uri was not supplied, but --app was, so load manifest from that
-			manifest = FXManifest.load(new File(appStr).toURI());
-			return;
-		}
-
 		URL embeddedManifest = AbstractLauncher.class.getResource("/app.xml");
 		manifest = JAXB.unmarshal(embeddedManifest, FXManifest.class);
 
@@ -227,15 +193,46 @@ public abstract class AbstractLauncher<APP> {
 			log.info("offline selected");
 			return;
 		}
+
+		String appStr = null;
+
+		if (namedParams.containsKey("app")) {
+			// get --app-param
+			appStr = ensureEndingSlash(namedParams.get("app"));
+			log.info(String.format("Loading manifest from 'app' parameter supplied: %s", appStr));
+		}
+
+		URI remoteManifestUri = manifest.uri;
+		if (namedParams.containsKey("uri")) {
+			// get --uri-param
+			String uriStr = ensureEndingSlash(namedParams.get("uri"));
+			log.info(String.format("Syncing files from 'uri' parameter supplied:  %s", uriStr));
+
+			URI uri = URI.create(uriStr);
+
+			// load manifest from --app param if supplied, else default file at supplied uri
+			remoteManifestUri = (appStr != null)
+					? URI.create(appStr.replace("/app.xml", "/"))
+					: URI.create(uriStr); // We avoid using uri.resolve() here so as to not break UNC paths. See issue #143
+		}
+		else if (appStr != null) {
+			// --uri was not supplied, but --app was, so load manifest from that
+			remoteManifestUri = new File(appStr.replace("/app.xml", "/")).toURI();
+		}
+
 		try {
-			FXManifest remoteManifest = FXManifest.load(manifest.getFXAppURI());
+			URI appXmlUri = URI.create(ensureEndingSlash(remoteManifestUri.toString()) + "app.xml");
+			FXManifest remoteManifest = FXManifest.load(appXmlUri);
 
 			if (remoteManifest == null) {
-				log.info(String.format("No remote manifest at %s", manifest.getFXAppURI()));
+				log.info(String.format("No remote manifest at %s", appXmlUri));
 			} else if (!remoteManifest.equals(manifest)) {
 				// Update to remote manifest if newer or we specifically accept downgrades
 				if (remoteManifest.isNewerThan(manifest) || manifest.acceptDowngrade) {
 					manifest = remoteManifest;
+
+					// use uri for all dependencies
+					manifest.uri = remoteManifestUri;
 					JAXB.marshal(manifest, manifestPath.toFile());
 				}
 			}
