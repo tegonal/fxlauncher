@@ -1,6 +1,7 @@
 package fxlauncher;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.URI;
@@ -10,6 +11,7 @@ import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 import com.sun.javafx.application.PlatformImpl;
 
@@ -53,8 +55,7 @@ public class Launcher extends Application {
 					if (Application.class.isAssignableFrom(appClass)) {
 						app = appClass.newInstance();
 					} else {
-						throw new IllegalArgumentException(
-								String.format(Constants.getString("Error.Application.Create.1"), appClass));
+						log.log(Level.INFO, String.format(Constants.getString("Error.Application.Create.1"), appClass));
 					}
 				} catch (Throwable t) {
 					reportError(Constants.getString("Error.Application.Create.2"), t);
@@ -251,11 +252,14 @@ public class Launcher extends Application {
 			superLauncher.setPhase(Constants.getString("Application.Phase.Init"));
 			app.start(primaryStage);
 		} else {
-			// Start any executable jar (i.E. Spring Boot);
-			String firstFile = superLauncher.getManifest().files.get(0).file;
-			log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), firstFile));
+			// start own process with classpath set to all dependecies and launching launchClass inside
+			String launchClass = superLauncher.getManifest().launchClass;
+			// Start non javafx application (i.E. Spring Boot);
+			log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
-			String command = String.format("java -jar %s/%s", cacheDir.toAbsolutePath(), firstFile);
+			String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
+
+			String command = String.format("java -cp %s %s", classPath, launchClass);
 			log.info(() -> String.format(Constants.getString("Application.log.Execute"), command));
 			Runtime.getRuntime().exec(command);
 		}
