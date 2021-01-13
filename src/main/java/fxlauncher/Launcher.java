@@ -259,7 +259,7 @@ public class Launcher extends Application {
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
 			String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
 
-			String command = String.format("java -cp %s %s", classPath, launchClass);
+			String command = String.format("java -cp \"%s\" %s", classPath, launchClass);
 			log.info(() -> String.format(Constants.getString("Application.log.Execute"), command));
 			Runtime.getRuntime().exec(command);
 		}
