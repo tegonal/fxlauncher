@@ -1,9 +1,6 @@
 package fxlauncher;
 
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.Iterator;
@@ -239,6 +236,7 @@ public class Launcher extends Application {
 	}
 
 	private void startApplication() throws Exception {
+		superLauncher.setPhase(Constants.getString("Application.Phase.Init"));
 		if (app != null) {
 			Parameters appparams = app.getParameters();
 			// check if app has parameters
@@ -249,19 +247,49 @@ public class Launcher extends Application {
 				appparams.getUnnamed().addAll(params.getUnnamed());
 			}
 			PlatformImpl.setApplicationName(app.getClass());
-			superLauncher.setPhase(Constants.getString("Application.Phase.Init"));
 			app.start(primaryStage);
 		} else {
+			// already hide our stage
+			stage.hide();
+
 			// start own process with classpath set to all dependecies and launching launchClass inside
 			String launchClass = superLauncher.getManifest().launchClass;
 			// Start non javafx application (i.E. Spring Boot);
 			log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
 			String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
+			//String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + new File(libraryFile.file).getParent() + File.separator + "*").distinct().collect(Collectors.joining(File.pathSeparator));
 
-			String command = String.format("java -cp \"%s\" %s", classPath, launchClass);
-			log.info(() -> String.format(Constants.getString("Application.log.Execute"), command));
-			Runtime.getRuntime().exec(command);
+			log.info(() -> String.format(Constants.getString("Application.log.Execute"), "java", "-cp", classPath, launchClass));
+			Process process = Runtime.getRuntime().exec(new String[]{"java", "-cp", classPath, launchClass});
+
+			// log error stream for the first seconds to capture if starting failed
+			InputStream stderr = process.getErrorStream();
+			Thread errorLog = new Thread(() -> {
+				InputStreamReader isr = new InputStreamReader(stderr);
+				BufferedReader br = new BufferedReader(isr);
+				String line = null;
+				try {
+					while(true) {
+						if (!((line = br.readLine()) != null)) break;
+						String logMsg = String.format("%s: %s", launchClass, line);
+						log.log(Level.SEVERE, logMsg);
+					}
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
+			});
+			errorLog.start();
+			errorLog.join(2000);
+			if (!process.isAlive()) {
+				int exitVal = process.exitValue();
+				log.info(() -> "Process exitValue: " + exitVal);
+			}
+			else {
+				log.info(() -> "Successfully started subprocess");
+				//shutdown current process to unblock sub-process on windows system
+				System.exit(0);
+			}
 		}
 	}
 
