@@ -266,14 +266,16 @@ public class Launcher extends Application {
 			// log error stream for the first seconds to capture if starting failed
 			InputStream stderr = process.getErrorStream();
 			Thread errorLog = new Thread(() -> {
-				InputStreamReader isr = new InputStreamReader(stderr);
-				BufferedReader br = new BufferedReader(isr);
-				String line = null;
 				try {
-					while(true) {
-						if (!((line = br.readLine()) != null)) break;
-						String logMsg = String.format("%s: %s", launchClass, line);
-						log.log(Level.SEVERE, logMsg);
+					try(InputStreamReader isr = new InputStreamReader(stderr);
+						BufferedReader br = new BufferedReader(isr);) {
+						String line = null;
+						while (true) {
+							if (!((line = br.readLine()) != null)) break;
+							String logMsg = String.format("%s: %s", launchClass, line);
+							log.log(Level.SEVERE, logMsg);
+						}
+
 					}
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -287,9 +289,9 @@ public class Launcher extends Application {
 			}
 			else {
 				log.info(() -> "Successfully started subprocess");
-				//shutdown current process to unblock sub-process on windows system
+				//shutdown current process to cleanup and unblock sub-process
 				System.exit(0);
-			}
+			}s
 		}
 	}
 
