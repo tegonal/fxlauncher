@@ -291,7 +291,7 @@ public class Launcher extends Application {
 				log.info(() -> "Successfully started subprocess");
 				//shutdown current process to cleanup and unblock sub-process
 				System.exit(0);
-			}s
+			}
 		}
 	}
 
