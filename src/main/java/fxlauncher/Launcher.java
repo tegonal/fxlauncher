@@ -258,7 +258,6 @@ public class Launcher extends Application {
 			log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
 			String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
-			//String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + new File(libraryFile.file).getParent() + File.separator + "*").distinct().collect(Collectors.joining(File.pathSeparator));
 
 			log.info(() -> String.format(Constants.getString("Application.log.Execute"), "java", "-cp", classPath, launchClass));
 			Process process = Runtime.getRuntime().exec(new String[]{"java", "-cp", classPath, launchClass});
