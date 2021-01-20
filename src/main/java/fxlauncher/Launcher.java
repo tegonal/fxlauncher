@@ -3,6 +3,7 @@ package fxlauncher;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
@@ -248,49 +249,73 @@ public class Launcher extends Application {
 			}
 			PlatformImpl.setApplicationName(app.getClass());
 			app.start(primaryStage);
-		} else {
-			// already hide our stage
+		} else{
+			// already hide our stage as we don't attach a child javafx application
 			stage.hide();
-
-			// start own process with classpath set to all dependecies and launching launchClass inside
-			String launchClass = superLauncher.getManifest().launchClass;
-			// Start non javafx application (i.E. Spring Boot);
-			log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
-			String classPath = superLauncher.getManifest().files.stream().map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
 
-			log.info(() -> String.format(Constants.getString("Application.log.Execute"), "java", "-cp", classPath, launchClass));
-			Process process = Runtime.getRuntime().exec(new String[]{"java", "-cp", classPath, launchClass});
+			if (superLauncher.getManifest().launchCommand != null) {
+				String cmd = superLauncher.getManifest().launchCommand;
 
-			// log error stream for the first seconds to capture if starting failed
-			InputStream stderr = process.getErrorStream();
-			Thread errorLog = new Thread(() -> {
-				try {
-					try(InputStreamReader isr = new InputStreamReader(stderr);
-						BufferedReader br = new BufferedReader(isr);) {
-						String line = null;
-						while (true) {
-							if (!((line = br.readLine()) != null)) break;
-							String logMsg = String.format("%s: %s", launchClass, line);
-							log.log(Level.SEVERE, logMsg);
-						}
+				// prefix command with cache directory
+				String cmdWithPath = cacheDir.toAbsolutePath() + File.separator + cmd;
 
+				// start sub process using a command
+				log.info(() -> String.format(Constants.getString("Application.log.Execute"), cmdWithPath));
+
+				startSubProcess(cmdWithPath);
+
+			} else if (superLauncher.getManifest().launchClass != null){
+
+				//start launchClass as an own process wit the assumption that the java command is locally available
+				String launchClass = superLauncher.getManifest().launchClass;
+
+				log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
+
+				String classPath = superLauncher.getManifest().files.stream().filter(LibraryFile::loadForCurrentPlatform)
+						.map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
+
+				String javaCommand = System.getProperty("java.home")+File.separator+"bin"+File.separator+"java";
+				log.info(() -> String.format(Constants.getString("Application.log.Execute"), javaCommand, "-cp", classPath, launchClass));
+
+				startSubProcess(javaCommand, "-cp", classPath, launchClass);
+			} else {
+				log.info(() -> "Could not start child process, wether command not launchClass defined");
+				System.exit(-1);
+			}
+		}
+	}
+
+	private void startSubProcess(String... cmd) throws IOException, InterruptedException {
+		Process process = Runtime.getRuntime().exec(cmd);
+
+		// log error stream for the first seconds to capture if starting failed
+		InputStream stderr = process.getErrorStream();
+		Thread errorLog = new Thread(() -> {
+			try {
+				try(InputStreamReader isr = new InputStreamReader(stderr);
+					BufferedReader br = new BufferedReader(isr);) {
+					String line = null;
+					while (true) {
+						if ((line = br.readLine()) == null) break;
+						log.log(Level.SEVERE, line);
 					}
-				} catch (IOException e) {
-					e.printStackTrace();
+
 				}
-			});
-			errorLog.start();
-			errorLog.join(2000);
-			if (!process.isAlive()) {
-				int exitVal = process.exitValue();
-				log.info(() -> "Process exitValue: " + exitVal);
+			} catch (IOException e) {
+				e.printStackTrace();
 			}
-			else {
-				log.info(() -> "Successfully started subprocess");
-				//shutdown current process to cleanup and unblock sub-process
-				System.exit(0);
-			}
+		});
+		errorLog.start();
+		errorLog.join(2000);
+		if (!process.isAlive()) {
+			int exitVal = process.exitValue();
+			log.info(() -> "Process exitValue: " + exitVal);
+		}
+		else {
+			log.info(() -> "Successfully started subprocess");
+			//shutdown current process to cleanup and unblock sub-process
+			System.exit(0);
 		}
 	}
 

@@ -26,6 +26,8 @@ public class FXManifest {
 	public URI uri;
 	@XmlAttribute(name = "launch")
 	public String launchClass;
+	@XmlAttribute(name = "cmd")
+	public String launchCommand;
 	@XmlElement(name = "lib")
 	public List<LibraryFile> files = new ArrayList<>();
 	@XmlElement
@@ -155,6 +157,7 @@ public class FXManifest {
 		if (cacheDir != null ? !cacheDir.equals(that.cacheDir) : that.cacheDir != null) return false;
 		if (lingeringUpdateScreen != null ? !lingeringUpdateScreen.equals(that.lingeringUpdateScreen) : that.lingeringUpdateScreen != null) return false;
 		if (stopOnUpdateErrors != null ? !stopOnUpdateErrors.equals(that.stopOnUpdateErrors) : that.stopOnUpdateErrors != null) return false;
+		if (launchCommand != null ? !launchCommand.equals(that.launchCommand) : that.launchCommand != null) return false;
 		return acceptDowngrade != null ? acceptDowngrade.equals(that.acceptDowngrade) : that.acceptDowngrade == null;
 
 	}
@@ -173,6 +176,7 @@ public class FXManifest {
 		result = 31 * result + (cacheDir != null ? cacheDir.hashCode() : 0);
 		result = 31 * result + (acceptDowngrade != null ? acceptDowngrade.hashCode() : 0);
 		result = 31 * result + (stopOnUpdateErrors != null ? stopOnUpdateErrors.hashCode() : 0);
+		result = 31 * result + ((launchCommand != null) ? launchCommand.hashCode(): 0);
 		return result;
 	}
 
