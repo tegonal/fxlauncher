@@ -248,7 +248,7 @@ public class Launcher extends Application {
 			}
 			PlatformImpl.setApplicationName(app.getClass());
 			app.start(primaryStage);
-		} else{
+		} else {
 			// already hide our stage as we don't attach a child javafx application
 			stage.hide();
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
@@ -266,7 +266,7 @@ public class Launcher extends Application {
 
 			} else if (superLauncher.getManifest().launchClass != null){
 
-				//start launchClass as an own process wit the assumption that the java command is locally available
+				//start launchClass as an own process with the assumption that the java command is locally available
 				String launchClass = superLauncher.getManifest().launchClass;
 
 				log.info(() -> String.format(Constants.getString("Application.log.Noappclass"), launchClass));
@@ -279,7 +279,7 @@ public class Launcher extends Application {
 
 				startSubProcess(javaCommand, "-cp", classPath, launchClass);
 			} else {
-				log.info(() -> "Could not start child process, wether command not launchClass defined");
+				log.info(() -> "Could not start child process, neither launchCommand nor launchClass defined");
 				System.exit(-1);
 			}
 		}
@@ -310,8 +310,7 @@ public class Launcher extends Application {
 		if (!process.isAlive()) {
 			int exitVal = process.exitValue();
 			log.info(() -> "Process exitValue: " + exitVal);
-		}
-		else {
+		} else {
 			log.info(() -> "Successfully started subprocess");
 			//shutdown current process to cleanup and unblock sub-process
 			System.exit(0);
