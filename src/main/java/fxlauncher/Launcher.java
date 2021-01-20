@@ -3,7 +3,6 @@ package fxlauncher;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
