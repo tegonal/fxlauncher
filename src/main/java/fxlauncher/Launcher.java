@@ -255,11 +255,11 @@ public class Launcher extends Application {
 			stage.hide();
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
 
-			String parameters = (superLauncher.getManifest().parameters != null)? " " +superLauncher.getManifest().parameters: "";
 			if (superLauncher.getManifest().launchCommand != null) {
 				String cmd = superLauncher.getManifest().launchCommand;
 
 				// prefix command with cache directory and parameters from manifest
+				String parameters = superLauncher.getParameters().getRaw().stream().collect(Collectors.joining(" "));
 				String cmdWithPathAndParameters = cacheDir.toAbsolutePath() + File.separator + cmd + parameters;
 
 				// start sub process using a command
