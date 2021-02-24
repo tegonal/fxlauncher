@@ -3,7 +3,9 @@ package fxlauncher;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -253,16 +255,17 @@ public class Launcher extends Application {
 			stage.hide();
 			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
 
+			String parameters = (superLauncher.getManifest().parameters != null)? " " +superLauncher.getManifest().parameters: "";
 			if (superLauncher.getManifest().launchCommand != null) {
 				String cmd = superLauncher.getManifest().launchCommand;
 
-				// prefix command with cache directory
-				String cmdWithPath = cacheDir.toAbsolutePath() + File.separator + cmd;
+				// prefix command with cache directory and parameters from manifest
+				String cmdWithPathAndParameters = cacheDir.toAbsolutePath() + File.separator + cmd + parameters;
 
 				// start sub process using a command
-				log.info(() -> String.format(Constants.getString("Application.log.Execute"), cmdWithPath));
+				log.info(() -> String.format(Constants.getString("Application.log.Execute"), cmdWithPathAndParameters));
 
-				startSubProcess(cmdWithPath);
+				startSubProcess(cmdWithPathAndParameters);
 
 			} else if (superLauncher.getManifest().launchClass != null){
 
@@ -277,7 +280,14 @@ public class Launcher extends Application {
 				String javaCommand = System.getProperty("java.home")+File.separator+"bin"+File.separator+"java";
 				log.info(() -> String.format(Constants.getString("Application.log.Execute"), javaCommand, "-cp", classPath, launchClass));
 
-				startSubProcess(javaCommand, "-cp", classPath, launchClass);
+				List<String> allArgs = new ArrayList<>();
+				allArgs.add(javaCommand);
+				allArgs.add("-cp");
+				allArgs.add(classPath);
+				allArgs.addAll(superLauncher.getParameters().getRaw());
+				allArgs.add(launchClass);
+
+				startSubProcess(allArgs.toArray(new String[allArgs.size()]));
 			} else {
 				log.info(() -> "Could not start child process, neither launchCommand nor launchClass defined");
 				System.exit(-1);
