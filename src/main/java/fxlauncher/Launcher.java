@@ -3,7 +3,9 @@ package fxlauncher;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.ServiceLoader;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
@@ -237,14 +239,14 @@ public class Launcher extends Application {
 
 	private void startApplication() throws Exception {
 		superLauncher.setPhase(Constants.getString("Application.Phase.Init"));
+		final LauncherParams params = new LauncherParams(getParameters(), superLauncher.getManifest());
 		if (app != null) {
-			Parameters appparams = app.getParameters();
+			Parameters appParams = app.getParameters();
 			// check if app has parameters
-			if (appparams != null) {
-				final LauncherParams params = new LauncherParams(getParameters(), superLauncher.getManifest());
-				appparams.getNamed().putAll(params.getNamed());
-				appparams.getRaw().addAll(params.getRaw());
-				appparams.getUnnamed().addAll(params.getUnnamed());
+			if (appParams != null) {
+				appParams.getNamed().putAll(params.getNamed());
+				appParams.getRaw().addAll(params.getRaw());
+				appParams.getUnnamed().addAll(params.getUnnamed());
 			}
 			PlatformImpl.setApplicationName(app.getClass());
 			app.start(primaryStage);
@@ -256,13 +258,14 @@ public class Launcher extends Application {
 			if (superLauncher.getManifest().launchCommand != null) {
 				String cmd = superLauncher.getManifest().launchCommand;
 
-				// prefix command with cache directory
-				String cmdWithPath = cacheDir.toAbsolutePath() + File.separator + cmd;
+				// prefix command with cache directory and parameters from manifest
+				String parameters = params.getRaw().stream().collect(Collectors.joining(" "));
+				String cmdWithPathAndParameters = cacheDir.toAbsolutePath() + File.separator + cmd + parameters;
 
 				// start sub process using a command
-				log.info(() -> String.format(Constants.getString("Application.log.Execute"), cmdWithPath));
+				log.info(() -> String.format(Constants.getString("Application.log.Execute"), cmdWithPathAndParameters));
 
-				startSubProcess(cmdWithPath);
+				startSubProcess(cmdWithPathAndParameters);
 
 			} else if (superLauncher.getManifest().launchClass != null){
 
@@ -275,9 +278,16 @@ public class Launcher extends Application {
 						.map(libraryFile -> cacheDir.toAbsolutePath() + File.separator + libraryFile.file).collect(Collectors.joining(File.pathSeparator));
 
 				String javaCommand = System.getProperty("java.home")+File.separator+"bin"+File.separator+"java";
-				log.info(() -> String.format(Constants.getString("Application.log.Execute"), javaCommand, "-cp", classPath, launchClass));
 
-				startSubProcess(javaCommand, "-cp", classPath, launchClass);
+				List<String> allArgs = new ArrayList<>();
+				allArgs.add(javaCommand);
+				allArgs.add("-cp");
+				allArgs.add(classPath);
+				allArgs.addAll(params.getRaw());
+				allArgs.add(launchClass);
+				log.info(() -> String.format(Constants.getString("Application.log.Execute"), allArgs.stream().collect(Collectors.joining(" "))));
+
+				startSubProcess(allArgs.toArray(new String[allArgs.size()]));
 			} else {
 				log.info(() -> "Could not start child process, neither launchCommand nor launchClass defined");
 				System.exit(-1);
