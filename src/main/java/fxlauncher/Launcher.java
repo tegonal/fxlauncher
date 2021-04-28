@@ -3,16 +3,11 @@ package fxlauncher;
 import java.io.*;
 import java.net.URI;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ServiceLoader;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
-
-import com.sun.javafx.application.PlatformImpl;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -35,11 +30,13 @@ public class Launcher extends Application {
 	private Stage stage;
 	private UIProvider uiProvider;
 	private StackPane root;
+	private Map<String, String> additionalParameters = new HashMap<>();
+	private Parameters parameters;
 
 	private final AbstractLauncher<Application> superLauncher = new AbstractLauncher<Application>() {
 		@Override
 		protected Parameters getParameters() {
-			return Launcher.this.getParameters();
+			return Launcher.this.getLauncherParameters();
 		}
 
 		@Override
@@ -93,6 +90,17 @@ public class Launcher extends Application {
 
 	};
 
+	protected Parameters getLauncherParameters() {
+		if (this.parameters == null) {
+			this.parameters = getParameters();
+		}
+		return this.parameters;
+	}
+
+	public void registerLauncherParameter(String name, String value) {
+		this.additionalParameters.put(name, value);
+	}
+
 	/**
 	 * Check if a new version is available and return the manifest for the new
 	 * version or null if no update.
@@ -124,6 +132,9 @@ public class Launcher extends Application {
 	public void init() throws Exception {
 		Iterator<UIProvider> providers = ServiceLoader.load(UIProvider.class).iterator();
 		uiProvider = providers.hasNext() ? providers.next() : new DefaultUIProvider();
+
+		// register custom launcher parameters
+		this.parameters = new ParametersWithAdditionalNamedParameters(getParameters(), this.additionalParameters);
 	}
 
 	public void start(Stage primaryStage) throws Exception {
@@ -239,7 +250,7 @@ public class Launcher extends Application {
 
 	private void startApplication() throws Exception {
 		superLauncher.setPhase(Constants.getString("Application.Phase.Init"));
-		final LauncherParams params = new LauncherParams(getParameters(), superLauncher.getManifest());
+		final LauncherParams params = new LauncherParams(getLauncherParameters(), superLauncher.getManifest());
 		if (app != null) {
 			Parameters appParams = app.getParameters();
 			// check if app has parameters
@@ -248,12 +259,12 @@ public class Launcher extends Application {
 				appParams.getRaw().addAll(params.getRaw());
 				appParams.getUnnamed().addAll(params.getUnnamed());
 			}
-			PlatformImpl.setApplicationName(app.getClass());
+			//Platform.setApplicationName(app.getClass());
 			app.start(primaryStage);
 		} else {
 			// already hide our stage as we don't attach a child javafx application
 			stage.hide();
-			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getParameters().getNamed());
+			Path cacheDir = superLauncher.getManifest().resolveCacheDir(getLauncherParameters().getNamed());
 
 			if (superLauncher.getManifest().launchCommand != null) {
 				String cmd = superLauncher.getManifest().launchCommand;
