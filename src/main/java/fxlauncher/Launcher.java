@@ -259,6 +259,7 @@ public class Launcher extends Application {
 				appParams.getRaw().addAll(params.getRaw());
 				appParams.getUnnamed().addAll(params.getUnnamed());
 			}
+                      // Removed as access to internal PlatformImpl is not allowed anymore. Didn't find a proper other implementation way but kept comment be able to support setting correct application name later
 			//Platform.setApplicationName(app.getClass());
 			app.start(primaryStage);
 		} else {
