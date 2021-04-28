@@ -1,9 +1,9 @@
 package fxlauncher;
 
+import jakarta.xml.bind.JAXB;
 import javafx.application.Application;
 
 import javax.net.ssl.*;
-import javax.xml.bind.JAXB;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -36,6 +36,7 @@ public abstract class AbstractLauncher<APP> {
 
 	protected static FXManifest manifest;
 	private String phase;
+	private Map<String, Object> additionalParameters;
 
 	/**
 	 * Make java.util.logger log to a file. Default it will log to

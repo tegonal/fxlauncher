@@ -1,6 +1,7 @@
 package fxlauncher;
 
-import javax.xml.bind.JAXB;
+import jakarta.xml.bind.JAXB;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;

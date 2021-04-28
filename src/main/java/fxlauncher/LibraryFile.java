@@ -1,6 +1,7 @@
 package fxlauncher;
 
-import javax.xml.bind.annotation.XmlAttribute;
+import jakarta.xml.bind.annotation.XmlAttribute;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.MalformedURLException;
